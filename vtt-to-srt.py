@@ -41,7 +41,7 @@ def convertContent(fileContents):
         r'^.*?(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})',
         re.DOTALL)
 
-    # Delete header block and optional blocksgit 
+    # Delete header block and optional blocks
     bodyContent = re.split(header_and_timecode, replacement, maxsplit=1)
     replacement = ('').join(bodyContent)
 

@@ -29,32 +29,30 @@ from stat import ST_MODE, S_ISDIR, S_ISREG
 
 def convertContent(fileContents):
 
-    # Delete header block and optional blocks
-    head = ''
-    lines = fileContents.split('\n')
-    for line in lines:
-        if not (line.strip()[:1].isdigit() and
-                line.strip()[2] == ':' and
-                line.strip()[3:4].isdigit() and
-                line.strip()[5] == ':' and
-                line.strip()[6:7].isdigit()):
-            head += line + '\n'
-        else:
-            break
-    replacement = fileContents.replace(head, '')
-
     # replase '.' for ',' in timecode
-    replacement = re.sub(r'([\d]+)\.([\d]+)', r'\1,\2', replacement)
+    replacement = re.sub(r'([\d]+)\.([\d]+)', r'\1,\2', fileContents)
+
     replacement = re.sub(r'^\d+\n', '', replacement)
     replacement = re.sub(r'\n\d+\n', '\n', replacement)
 
-    # add number before timecode
-    res = replacement
-    for i, match in enumerate(re.finditer(
-            r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}',
-            replacement)):
-        res = res.replace(match.group(), str(i+1)+'\n'+(match.group()))
-    return res
+    timecode = re.compile(
+            r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}')
+
+    # Delete header block and optional blocks
+    head = ''
+    lines = replacement.split('\n')
+    for line in lines:
+        match = re.search(timecode, line)
+        if not match:
+            head += line + '\n'
+        else:
+            break
+    replacement = replacement.replace(head, '')
+
+    for i, match in enumerate(re.finditer(timecode, replacement)):
+        replacement = replacement.replace(
+                match.group(), str(i+1)+'\n'+(match.group()))
+    return replacement
 
 
 def vtt_to_srt(vttNamaFile):

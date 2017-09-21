@@ -1,12 +1,13 @@
 #!/usr/bin/python
-#---------------------------------------
+# -*- coding: utf-8 -*-
+# ---------------------------------------
 # vtt-to-srt.py
 # (c) Jansen A. Simanullang
 # 02.04.2016 13:39
 # LAST CHANGE:
 # 02.04.2016 16:56
 # recursively visit subdirectories
-#---------------------------------------
+# ---------------------------------------
 # usage: python vtt-to-srt.py
 #
 # example:
@@ -20,108 +21,88 @@
 # converting Coursera's vtt subtitle
 
 
-import os, re, sys
-from stat import *
+import os
+import re
+import sys
+from stat import ST_MODE, S_ISDIR, S_ISREG
 
 
 def convertContent(fileContents):
 
-	replacement = re.sub(r'([\d]+)\.([\d]+)', r'\1,\2', fileContents)
-	replacement = re.sub(r'WEBVTT\n\n', '', replacement)
-	replacement = re.sub(r'^\d+\n', '', replacement)
-	replacement = re.sub(r'\n\d+\n', '\n', replacement)
+    # Delete header block and optional blocks
+    head = ''
+    lines = fileContents.split('\n')
+    for line in lines:
+        if not (line.strip()[:1].isdigit() and
+                line.strip()[2] == ':' and
+                line.strip()[3:4].isdigit() and
+                line.strip()[5] == ':' and
+                line.strip()[6:7].isdigit()):
+            head += line + '\n'
+        else:
+            break
+    replacement = fileContents.replace(head, '')
 
-	return replacement
-	
+    # replase '.' for ',' in timecode
+    replacement = re.sub(r'([\d]+)\.([\d]+)', r'\1,\2', replacement)
+    replacement = re.sub(r'^\d+\n', '', replacement)
+    replacement = re.sub(r'\n\d+\n', '\n', replacement)
 
-
-def fileCreate(strNamaFile, strData):
-	#--------------------------------
-	# fileCreate(strNamaFile, strData)
-	# create a text file
-	#
-	try:
-	
-		f = open(strNamaFile, "w")
-		f.writelines(str(strData))
-		f.close()
-	
-	except IOError:
-	
-		strNamaFile = strNamaFile.split(os.sep)[-1]
-		f = open(strNamaFile, "w")
-		f.writelines(str(strData))
-		f.close()
-		
-	print "file created: " + strNamaFile + "\n"
-	
-	
-	
-def readTextFile(strNamaFile):
-
-	f = open(strNamaFile, "r")
-	
-	print "file being read: " + strNamaFile + "\n"
-	
-	return f.read().decode("windows-1252").encode('ascii', 'ignore')
-	
+    # add number before timecode
+    res = replacement
+    for i, match in enumerate(re.finditer(
+            r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}',
+            replacement)):
+        res = res.replace(match.group(), str(i+1)+'\n'+(match.group()))
+    return res
 
 
-def vtt_to_srt(strNamaFile):
+def vtt_to_srt(vttNamaFile):
 
-	fileContents = readTextFile(strNamaFile)
-	
-	strData = ""
-	
-	strData = strData + convertContent(fileContents)
-	
-	strNamaFile = strNamaFile.replace(".vtt",".srt")
-		
-	print strNamaFile
-		
-	fileCreate(strNamaFile, strData)
-	
-	
-	
+    with open(vttNamaFile, "r") as f:
+        fileContents = f.read()
+        print "file being read: " + vttNamaFile
+
+    strData = convertContent(fileContents)
+
+    strNamaFile = vttNamaFile.replace(".vtt", ".srt")
+    with open(strNamaFile, "w") as fout:
+        fout.write(strData)
+        print "file created:    " + strNamaFile
+
+
 def walktree(TopMostPath, callback):
 
     '''recursively descend the directory tree rooted at TopMostPath,
        calling the callback function for each regular file'''
 
     for f in os.listdir(TopMostPath):
-	
+
         pathname = os.path.join(TopMostPath, f)
         mode = os.stat(pathname)[ST_MODE]
-		
+
         if S_ISDIR(mode):
-		
             # It's a directory, recurse into it
             walktree(pathname, callback)
-			
         elif S_ISREG(mode):
-		
             # It's a file, call the callback function
             callback(pathname)
-			
         else:
-		
             # Unknown file type, print a message
             print 'Skipping %s' % pathname
 
-			
 
 def convertVTTtoSRT(file):
-	
-	if '.vtt' in file:
-	
-		vtt_to_srt(file)
-		
+    if '.vtt' in file:
+        vtt_to_srt(file)
+
+
 def main():
-	
-	#just edit the path below
+    # just edit the path below
+    TopMostPath = '/home/duncan/Загрузки/srt'
 
-	TopMostPath = 'C:\Users\developer\Videos\Virtual Universities\Coursera'
+    walktree(TopMostPath, convertVTTtoSRT)
 
-	walktree(TopMostPath, convertVTTtoSRT)
-	
-main()	
+
+if __name__ == '__main__':
+    main()

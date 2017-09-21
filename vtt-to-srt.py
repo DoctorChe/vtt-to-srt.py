@@ -37,21 +37,19 @@ def convertContent(fileContents):
 
     timecode = re.compile(
             r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}')
+    header_and_timecode = re.compile(
+        r'^.*?(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})',
+        re.DOTALL)
 
-    # Delete header block and optional blocks
-    head = ''
-    lines = replacement.split('\n')
-    for line in lines:
-        match = re.search(timecode, line)
-        if not match:
-            head += line + '\n'
-        else:
-            break
-    replacement = replacement.replace(head, '')
+    # Delete header block and optional blocksgit 
+    bodyContent = re.split(header_and_timecode, replacement, maxsplit=1)
+    replacement = ('').join(bodyContent)
 
+    # Add numeration before timecode
     for i, match in enumerate(re.finditer(timecode, replacement)):
         replacement = replacement.replace(
                 match.group(), str(i+1)+'\n'+(match.group()))
+
     return replacement
 
 
